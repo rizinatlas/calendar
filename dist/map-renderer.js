@@ -5,7 +5,8 @@ const coordinates={
   'Riyadh, Saudi Arabia':[24.7136,46.6753],'Doha, Qatar':[25.2854,51.5310],'Shanghai, China':[31.2304,121.4737],'Gliwice, Poland':[50.2945,18.6714],
   'Yokohama, Japan':[35.4437,139.6380],'Nagoya, Japan':[35.1815,136.9066],'Dallas, USA':[32.7767,-96.7970],'Toronto, Canada':[43.6532,-79.3832],
   'Seoul, Korea':[37.4980,126.8670],'Incheon, Korea':[37.4602,126.4407],'Newcastle, United Kingdom':[54.9783,-1.6178],
-  'Bishkek, Kyrgyzstan':[42.8746,74.5698],'St. Petersburg, Russia':[59.9343,30.3351],'Krasnodar, Russia':[45.0355,38.9753]
+  'Bishkek, Kyrgyzstan':[42.8746,74.5698],'St. Petersburg, Russia':[59.9343,30.3351],'Krasnodar, Russia':[45.0355,38.9753],
+  'Shymkent, Kazakhstan':[42.3417,69.5901]
 };
 renderDetail=()=>{
   detailRenderWithCards();
