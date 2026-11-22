@@ -16,3 +16,24 @@ renderDetail=()=>{
   const labelsInOrder=[...orderPanel.querySelectorAll('.fight strong')],total=labelsInOrder.length;labelsInOrder.forEach((label,index)=>{const order=index===0?'MAIN':index===1?'CO-MAIN':total-index;label.innerHTML=`${order}<br>VS`});
 };
 renderDetail();
+
+const compactCalendarStyle=document.createElement('style');
+compactCalendarStyle.textContent=`
+  .calendar-panel .day.compact-day .event{margin-top:3px;padding:4px 4px 4px 6px;font-size:11px;line-height:1.05}
+  .calendar-panel .day.compact-day .event.major{font-size:12px}
+`;
+document.head.append(compactCalendarStyle);
+const originalRenderDays=renderDays;
+renderDays=()=>{
+  originalRenderDays();
+  document.querySelectorAll('.calendar-panel .day').forEach(day=>{
+    const cards=[...day.querySelectorAll('.event')];
+    if(cards.length<4)return;
+    day.classList.add('compact-day');
+    cards.forEach(card=>{
+      const description=card.querySelector('span');
+      if(description){card.setAttribute('aria-label',`${card.firstChild.textContent} · ${description.textContent}`);description.remove()}
+    });
+  });
+};
+renderDays();
