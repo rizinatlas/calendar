@@ -1,0 +1,16 @@
+const originalDetailRenderer=renderDetail;
+renderDetail=()=>{
+  originalDetailRenderer();
+  const detail=document.querySelector('.detail-panel');
+  const tag=detail.querySelector('.detail-tag'),title=detail.querySelector('h2'),date=detail.querySelector('.detail-date'),poster=detail.querySelector('.poster'),info=detail.querySelector('.info'),map=detail.querySelector('.world-map'),heading=detail.querySelector('.card-heading'),links=detail.querySelector('.links');
+  const fights=[...detail.querySelectorAll('.fight')];
+  const infoPanel=document.createElement('section');infoPanel.className='event-info-panel';
+  const orderPanel=document.createElement('section');orderPanel.className='fight-order-panel';
+  [tag,title,date,info,map].forEach(node=>node&&infoPanel.append(node));
+  const posterWrap=document.createElement('div');posterWrap.className='poster-wrap';posterWrap.innerHTML='<p>OFFICIAL PROMOTION POSTER</p>';posterWrap.append(poster);orderPanel.append(posterWrap);
+  heading.textContent='FIGHT ORDER · MAIN EVENT & CO-MAIN EVENT';orderPanel.append(heading);
+  fights.forEach((node,index)=>{if(index>1)node.classList.add('extra-fight');orderPanel.append(node)});
+  if(fights.length>2){const more=document.createElement('button');more.className='show-all-fights';more.textContent=`모든 대진 보기 (${fights.length})`;more.onclick=()=>{orderPanel.classList.toggle('expanded');more.textContent=orderPanel.classList.contains('expanded')?'대진 접기':`모든 대진 보기 (${fights.length})`};orderPanel.append(more)}
+  links&&orderPanel.append(links);detail.replaceChildren(infoPanel,orderPanel);
+};
+renderDetail();
