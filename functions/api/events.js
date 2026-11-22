@@ -2,6 +2,10 @@ import {PROMOTION_SOURCES} from './sources.js';
 
 const UFC_EVENTS_URL='https://www.ufc.com/events#events-list-upcoming';
 const UFC_ORIGIN='https://www.ufc.com';
+const UFC_POSTER_PRODUCTS={
+  'ufc-335':'https://ufccollectibles.com/es/products/ufc-335-oliveira-vs-lopes-autographed-event-poster?variant=67684020289784',
+  'ufc-fight-night-december-05-2026':'https://ufccollectibles.com/products/ufc-fight-night-adesanya-vs-magomedov-autographed-event-poster'
+};
 const requestHeaders={'user-agent':'MMA Calendar schedule bot (+https://mmacalendar.pages.dev)','accept':'text/html,application/xhtml+xml'};
 const unique=items=>[...new Set(items)];
 
@@ -30,6 +34,17 @@ function parseUfcEvent(html,officialUrl){
   };
 }
 
+async function officialUfcPoster(event){
+  const slug=event.officialUrl.split('/').pop();
+  const sourceUrl=UFC_POSTER_PRODUCTS[slug];
+  if(!sourceUrl)return event;
+  try{
+    const response=await fetch(sourceUrl,{headers:requestHeaders,cf:{cacheTtl:3600,cacheEverything:true}});
+    const posterUrl=response.ok?field(await response.text(),/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)/i):null;
+    return posterUrl?{...event,posterUrl,posterType:'event-poster',posterSourceUrl:sourceUrl}:event;
+  }catch{return event}
+}
+
 async function fetchUfcSchedule(){
   const response=await fetch(UFC_EVENTS_URL,{headers:requestHeaders,cf:{cacheTtl:900,cacheEverything:true}});
   if(!response.ok)throw new Error(`UFC Events returned ${response.status}`);
@@ -37,7 +52,7 @@ async function fetchUfcSchedule(){
   const records=await Promise.all(urls.map(async officialUrl=>{
     try{const eventResponse=await fetch(officialUrl,{headers:requestHeaders,cf:{cacheTtl:900,cacheEverything:true}});return eventResponse.ok?parseUfcEvent(await eventResponse.text(),officialUrl):null}catch{return null}
   }));
-  return records.filter(Boolean);
+  return Promise.all(records.filter(Boolean).map(officialUfcPoster));
 }
 
 function pancraseRecords(html){

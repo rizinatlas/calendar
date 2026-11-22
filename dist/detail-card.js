@@ -8,7 +8,7 @@ renderDetail=()=>{
   const orderPanel=document.createElement('section');orderPanel.className='fight-order-panel';
   [tag,title,date,info,map].forEach(node=>node&&infoPanel.append(node));
   let posterWrap;
-  if(active.posterUrl){posterWrap=document.createElement('div');posterWrap.className='poster-wrap poster-under-card';const image=document.createElement('img');image.src=active.posterUrl;image.alt=`${active.n} 공식 포스터`;image.loading='lazy';image.onerror=()=>posterWrap.remove();posterWrap.append(image)}
+  if(active.posterUrl&&active.posterType==='event-poster'){posterWrap=document.createElement('div');posterWrap.className='poster-wrap poster-under-card';const image=document.createElement('img');image.src=active.posterUrl;image.alt=`${active.n} 공식 포스터`;image.loading='lazy';image.onerror=()=>posterWrap.remove();posterWrap.append(image)}
   heading.textContent='FIGHT ORDER · 공식 카드 순서';orderPanel.append(heading);
   status&&orderPanel.append(status);
   fights.forEach((node,index)=>{if(index>1)node.classList.add('extra-fight');orderPanel.append(node)});
