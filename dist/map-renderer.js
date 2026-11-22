@@ -1,3 +1,14 @@
+const layoutLock=document.createElement('style');
+layoutLock.textContent=`
+  .workspace{grid-template-columns:minmax(640px,680px) minmax(0,1fr)!important}
+  .detail-panel{grid-template-columns:395px minmax(0,1fr)!important;align-content:start!important}
+  .event-info-panel h2{height:66px!important;overflow:hidden!important;display:-webkit-box!important;-webkit-box-orient:vertical!important;-webkit-line-clamp:2!important}
+  .event-info-panel .detail-date{height:38px!important;overflow:hidden!important}
+  .event-info-panel .info{height:94px!important;overflow:hidden!important}
+  @media(max-width:1180px){.workspace{grid-template-columns:1fr!important}.detail-panel{grid-template-columns:395px minmax(0,1fr)!important}}
+  @media(max-width:700px){.detail-panel{grid-template-columns:1fr!important}.event-info-panel h2{height:auto!important}.event-info-panel .detail-date,.event-info-panel .info{height:auto!important}}
+`;
+document.head.append(layoutLock);
 const detailRenderWithCards=renderDetail;
 const coordinates={
   'Las Vegas, USA':[36.1699,-115.1398],'Tokyo, Japan':[35.6762,139.6503],'Kobe, Japan':[34.6901,135.1956],
@@ -20,7 +31,17 @@ renderDetail=()=>{
     normalized.includes('uae')?coordinates['Abu Dhabi, UAE']:
     normalized.includes('china')?coordinates['Shanghai, China']:null;
   const point=coordinates[active.city]||matched?.[1]||countryFallback;
-  if(!target||!point||!window.L)return;
+  if(!target)return;
+  if(!point||!window.L){
+    target.replaceChildren();
+    target.style.cssText='display:grid;place-items:center;background:#202826;color:#dce1df;border-color:#5a6560';
+    const message=document.createElement('p');
+    message.textContent='개최지 공식 확인 대기';
+    message.style.cssText='margin:0;font-size:13px;font-weight:700';
+    target.append(message);
+    return;
+  }
+  target.style.cssText='';
   target.replaceChildren();
   const map=L.map(target,{zoomControl:false,attributionControl:true,scrollWheelZoom:false,dragging:false}).setView(point,4);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:18,attribution:'© OpenStreetMap contributors'}).addTo(map);
