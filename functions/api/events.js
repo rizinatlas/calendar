@@ -3,6 +3,7 @@ import {PROMOTION_SOURCES} from './sources.js';
 const UFC_EVENTS_URL='https://www.ufc.com/events#events-list-upcoming';
 const UFC_ORIGIN='https://www.ufc.com';
 const ROAD_TICKETS_URL='https://roadfc.com/main/ticket/ticket.php';
+const BLACK_EVENTS_URL='https://www.blackcombat-official.com/event.php';
 const RIZIN_EVENTS_URL='https://jp.rizinff.com/_tags/%E5%A4%A7%E4%BC%9A%E6%83%85%E5%A0%B1';
 const RIZIN_ORIGIN='https://jp.rizinff.com';
 const UFC_POSTER_PRODUCTS={
@@ -108,6 +109,8 @@ async function fetchRoadSchedule(){
   if(!response.ok)throw new Error(`ROAD FC tickets returned ${response.status}`);
   return roadFcRecords(await response.text());
 }
+function blackCombatRecords(html){const records=[];for(const match of html.matchAll(/([\s\S]{0,1800}?)eventSeq=(\d+)/g)){const context=match[1],date=[...context.matchAll(/(2026)년\s*(\d{1,2})월\s*(\d{1,2})일/g)].pop();if(!date)continue;const [,year,month,day]=date;records.push({id:`black-combat-${match[2]}`,promotion:'BLACK COMBAT',date:`${year}-${month.padStart(2,'0')}-${day.padStart(2,'0')}`,officialUrl:`https://www.blackcombat-official.com/eventDetail.php?eventSeq=${match[2]}`,source:'BLACK COMBAT official event archive',fetchedAt:new Date().toISOString()})}return [...new Map(records.map(item=>[item.id,item])).values()]}
+async function fetchBlackCombatSchedule(){const response=await fetch(BLACK_EVENTS_URL,{headers:requestHeaders,cf:{cacheTtl:900,cacheEverything:true}});if(!response.ok)throw new Error(`BLACK COMBAT events returned ${response.status}`);return blackCombatRecords(await response.text())}
 
 function rizinListingRecords(html){
   const records=[],seen=new Set();
@@ -160,6 +163,9 @@ export const onRequestGet=async({request})=>{
   if(promotion==='road-fc'){
     try{return Response.json({schemaVersion:2,timezone:'Asia/Seoul',promotion:'ROAD FC',source:ROAD_TICKETS_URL,events:await fetchRoadSchedule()},{headers:{'cache-control':'public, max-age=900, stale-while-revalidate=3600'}})}
     catch{return Response.json({schemaVersion:2,timezone:'Asia/Seoul',promotion:'ROAD FC',events:[],error:'official-source-temporarily-unavailable'},{headers:{'cache-control':'public, max-age=60'}})};
+  }
+  if(promotion==='black-combat'){
+    try{return Response.json({schemaVersion:2,timezone:'Asia/Seoul',promotion:'BLACK COMBAT',source:BLACK_EVENTS_URL,events:await fetchBlackCombatSchedule()},{headers:{'cache-control':'public, max-age=900, stale-while-revalidate=3600'}})}catch{return Response.json({schemaVersion:2,timezone:'Asia/Seoul',promotion:'BLACK COMBAT',events:[],error:'official-source-temporarily-unavailable'},{headers:{'cache-control':'public, max-age=60'}})};
   }
   if(promotion==='rizin'){
     try{return Response.json({schemaVersion:2,timezone:'Asia/Tokyo',promotion:'RIZIN',source:RIZIN_EVENTS_URL,events:await fetchRizinSchedule()},{headers:{'cache-control':'public, max-age=900, stale-while-revalidate=3600'}})}
