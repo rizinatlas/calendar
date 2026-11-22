@@ -23,6 +23,8 @@ compactCalendarStyle.textContent=`
   .calendar-panel .event.major span{color:#9ca4a2}
   .calendar-panel .day.compact-day .event{margin-top:3px;padding:4px 4px 4px 6px;font-size:11px;line-height:1.05}
   .calendar-panel .day.compact-day .event.major{font-size:12px}
+  .calendar-panel .day.compact-day .event.is-expanded{padding:5px 4px 5px 6px;line-height:1.15}
+  .calendar-panel .day.compact-day .event.is-expanded span{display:block;margin-top:2px;color:#9ca4a2;font:400 9px/1.18 'IBM Plex Sans KR',sans-serif}
 `;
 document.head.append(compactCalendarStyle);
 const originalRenderDays=renderDays;
@@ -34,7 +36,23 @@ renderDays=()=>{
     day.classList.add('compact-day');
     cards.forEach(card=>{
       const description=card.querySelector('span');
-      if(description){card.setAttribute('aria-label',`${card.firstChild.textContent} · ${description.textContent}`);description.remove()}
+      if(description){
+        card.dataset.description=description.textContent;
+        card.setAttribute('aria-label',`${card.firstChild.textContent} · ${description.textContent}`);
+        description.remove();
+      }
+      card.addEventListener('click',()=>{
+        cards.forEach(other=>{
+          other.classList.remove('is-expanded');
+          other.querySelector('span')?.remove();
+        });
+        card.classList.add('is-expanded');
+        if(card.dataset.description){
+          const expanded=document.createElement('span');
+          expanded.textContent=card.dataset.description;
+          card.append(expanded);
+        }
+      });
     });
   });
 };
