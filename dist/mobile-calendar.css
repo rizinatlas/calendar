@@ -1,0 +1,7 @@
+@media(max-width:700px){
+  .calendar-panel .days{grid-template-columns:repeat(7,minmax(0,1fr))}
+  .calendar-panel .day{min-width:0;overflow:hidden}
+  .calendar-panel .event{box-sizing:border-box;min-width:0;max-width:100%;letter-spacing:0;overflow:hidden;overflow-wrap:anywhere;word-break:break-word}
+  .calendar-panel .event span{display:-webkit-box;min-width:0;overflow:hidden;overflow-wrap:anywhere;text-overflow:ellipsis;word-break:break-word;-webkit-box-orient:vertical;-webkit-line-clamp:2}
+  .calendar-panel .event-count{white-space:nowrap}
+}
