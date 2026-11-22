@@ -6,6 +6,7 @@ const ROAD_TICKETS_URL='https://roadfc.com/main/ticket/ticket.php';
 const BLACK_EVENTS_URL='https://www.blackcombat-official.com/event.php';
 const DEEP_POSTS_URL='https://www.deep2001.com/wp-json/wp/v2/posts?after=2026-01-01T00:00:00&before=2027-01-01T00:00:00&per_page=100&_embed=1';
 const ONE_EVENTS_URL='https://www.onefc.com/events/';
+const ZFN_EVENTS_URL='https://zfnofficial.com/84';
 const RIZIN_EVENTS_URL='https://jp.rizinff.com/_tags/%E5%A4%A7%E4%BC%9A%E6%83%85%E5%A0%B1';
 const RIZIN_ORIGIN='https://jp.rizinff.com';
 const UFC_POSTER_PRODUCTS={
@@ -118,6 +119,8 @@ function deepRecords(posts){const records=[],posterByEvent=new Map();const canon
 async function fetchDeepSchedule(){const response=await fetch(DEEP_POSTS_URL,{headers:requestHeaders,cf:{cacheTtl:1800,cacheEverything:true}});if(!response.ok)throw new Error(`DEEP posts returned ${response.status}`);return deepRecords(await response.json())}
 function oneRecords(html){const events=[];for(const match of html.matchAll(/<a\b[^>]*href=["'](https:\/\/www\.onefc\.com\/events\/[^"']+)["'][^>]*>([\s\S]{0,2800}?)<\/a>/gi)){const [,officialUrl,card]=match;const title=plainText(field(card,/<(?:span|h3)\b[^>]*class=["'][^"']*title[^"']*["'][^>]*>([\s\S]*?)<\//i)||'');const timestamp=field(card,/data-timestamp=["'](\d+)["']/i);if(!title||!timestamp)continue;const date=new Date(Number(timestamp)*1000).toISOString().slice(0,10);if(!date.startsWith('2026-'))continue;const posterUrl=field(card,/<img\b[^>]*\bsrc=["']([^"']+)/i)?.replace(/^http:/,'https:')||null;const venue=plainText(field(card,/<div\b[^>]*class=["']location["'][^>]*>([\s\S]*?)<\//i)||'');events.push({id:`one-${officialUrl.split('/').filter(Boolean).pop()}`,promotion:'ONE',title,date,city:venue,venue,officialUrl,startsAt:new Date(Number(timestamp)*1000).toISOString(),posterUrl,posterType:posterUrl?'event-poster':null,posterSourceUrl:posterUrl?officialUrl:null,source:'ONE Championship official events',fetchedAt:new Date().toISOString()})}return [...new Map(events.map(event=>[event.officialUrl,event])).values()]}
 async function fetchOneSchedule(){const response=await fetch(ONE_EVENTS_URL,{headers:requestHeaders,cf:{cacheTtl:900,cacheEverything:true}});if(!response.ok)throw new Error(`ONE Events returned ${response.status}`);return oneRecords(await response.text())}
+function zfnRecords(html){const records=[];for(const match of html.matchAll(/<div class="_item item_gallary[\s\S]{0,14000}?<span class="blocked">([\s\S]{0,5000}?)<\/span>[\s\S]{0,3000}?/gi)){const block=match[0],text=plainText(match[1]);const title=text.match(/\[\s*ZFN\s*0?(\d+)\s*\][^\n]*([\s\S]{0,80})/i);const date=text.match(/2026\.\s*(\d{1,2})\.\s*(\d{1,2})/);if(!title||!date)continue;const posterUrl=(field(block,/data-org=["']([^"']+)/i)||field(block,/data-src=["']([^"']+)/i))?.replaceAll('&amp;','&')||null;records.push({id:`zfn-${title[1]}`,promotion:'ZFN',title:`ZFN ${title[1]}${plainText(title[2]).trim()?`: ${plainText(title[2]).trim()}`:''}`,date:`2026-${date[1].padStart(2,'0')}-${date[2].padStart(2,'0')}`,city:'Incheon, Korea',venue:text.match(/인스파이어 아레나/)?.[0]||'공식 장소 확인 중',officialUrl:ZFN_EVENTS_URL,instagramUrl:field(block,/<a\b[^>]*href=["'](https:\/\/www\.instagram\.com\/p\/[^"']+)/i),posterUrl,posterType:posterUrl?'event-poster':null,posterSourceUrl:posterUrl?ZFN_EVENTS_URL:null,source:'ZFN official event page',fetchedAt:new Date().toISOString()})}return [...new Map(records.map(event=>[event.id,event])).values()]}
+async function fetchZfnSchedule(){const response=await fetch(ZFN_EVENTS_URL,{headers:requestHeaders,cf:{cacheTtl:900,cacheEverything:true}});if(!response.ok)throw new Error(`ZFN events returned ${response.status}`);return zfnRecords(await response.text())}
 
 function rizinListingRecords(html){
   const records=[],seen=new Set();
@@ -179,6 +182,9 @@ export const onRequestGet=async({request})=>{
   }
   if(promotion==='one'){
     try{return Response.json({schemaVersion:2,timezone:'Asia/Bangkok',promotion:'ONE',source:ONE_EVENTS_URL,events:await fetchOneSchedule()},{headers:{'cache-control':'public, max-age=900, stale-while-revalidate=3600'}})}catch{return Response.json({schemaVersion:2,timezone:'Asia/Bangkok',promotion:'ONE',events:[],error:'official-source-temporarily-unavailable'},{headers:{'cache-control':'public, max-age=60'}})};
+  }
+  if(promotion==='zfn'){
+    try{return Response.json({schemaVersion:2,timezone:'Asia/Seoul',promotion:'ZFN',source:ZFN_EVENTS_URL,events:await fetchZfnSchedule()},{headers:{'cache-control':'public, max-age=900, stale-while-revalidate=3600'}})}catch{return Response.json({schemaVersion:2,timezone:'Asia/Seoul',promotion:'ZFN',events:[],error:'official-source-temporarily-unavailable'},{headers:{'cache-control':'public, max-age=60'}})};
   }
   if(promotion==='rizin'){
     try{return Response.json({schemaVersion:2,timezone:'Asia/Tokyo',promotion:'RIZIN',source:RIZIN_EVENTS_URL,events:await fetchRizinSchedule()},{headers:{'cache-control':'public, max-age=900, stale-while-revalidate=3600'}})}
