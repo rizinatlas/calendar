@@ -30,12 +30,16 @@ function metaContent(html,name){
 function parseUfcEvent(html,officialUrl){
   const title=field(html,/<meta[^>]+property=["']og:title["'][^>]+content=["']([^"']+)/i)||field(html,/<title[^>]*>\s*([^<|]+)/i);
   if(!title)return null;
+  const description=field(html,/<meta[^>]+(?:name|property)=["'](?:description|og:description)["'][^>]+content=["']([^"']+)/i)||'';
+  const dateText=description.match(/(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{1,2}),\s*(2026)/i);
+  const monthIndex={january:1,february:2,march:3,april:4,may:5,june:6,july:7,august:8,september:9,october:10,november:11,december:12};
+  const fallbackStart=dateText?`2026-${String(monthIndex[dateText[1].toLowerCase()]).padStart(2,'0')}-${dateText[2].padStart(2,'0')}T12:00:00Z`:null;
   return {
     id:`ufc-${officialUrl.split('/').pop()}`,
     promotion:'UFC',
     title:title.replace(/^UFC\s*/i,'UFC ').trim(),
     officialUrl,
-    startsAt:field(html,/"startDate"\s*:\s*"([^"]+)/i)||field(html,/<time[^>]+datetime=["']([^"']+)/i),
+    startsAt:field(html,/"startDate"\s*:\s*"([^"]+)/i)||field(html,/<time[^>]+datetime=["']([^"']+)/i)||fallbackStart,
     venue:field(html,/"location"\s*:\s*\{[^}]*"name"\s*:\s*"([^"]+)/i),
     city:field(html,/"addressLocality"\s*:\s*"([^"]+)/i),
     posterCandidateUrl:field(html,/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)/i),
