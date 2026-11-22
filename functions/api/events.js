@@ -125,7 +125,7 @@ function rizinDetails(html,event){
   const start=text.match(/(\d{1,2})[：:](\d{2})\s*開始/);
   const venueSection=field(html,/<h3\b[^>]*>\s*会場\s*<\/h3>([\s\S]*?)(?=<h[23]\b|$)/i);
   const venue=venueSection?plainText(venueSection).split(/アクセス|主催|制作協力|対戦カード|チケット|配信情報/)[0].trim():null;
-  const heading=plainText(field(html,/<h1\b[^>]*>([\s\S]*?)<\/h1>/i)||'').replaceAll(/[『「』」]/g,'').replace(/大会概要|チケット|[／/]/g,' ').replaceAll(/\s+/g,' ').trim();
+  const heading=plainText(field(html,/<h1\b[^>]*>([\s\S]*?)<\/h1>/i)||'').replaceAll(/[『「』」]/g,'').replace(/大会概要|大会情報|チケット|[／/]/g,' ').replaceAll(/\s+/g,' ').trim();
   const posterUrl=metaContent(html,'og:image');
   return {...event,title:heading||event.title,venue,startsAtLocal:start?`${start[1].padStart(2,'0')}:${start[2]}`:null,posterUrl:posterUrl?.replace(/^http:/,'https:')||null,posterType:posterUrl?'event-poster':null,posterSourceUrl:posterUrl?event.officialUrl:null,posterStatus:posterUrl?'official-event-page':'official-poster-not-published',source:'RIZIN official event page',fetchedAt:new Date().toISOString()};
 }
