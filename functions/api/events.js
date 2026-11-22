@@ -57,13 +57,16 @@ async function officialUfcPoster(event){
 }
 
 async function fetchUfcSchedule(){
-  const response=await fetch(UFC_EVENTS_URL,{headers:requestHeaders,cf:{cacheTtl:900,cacheEverything:true}});
-  if(!response.ok)throw new Error(`UFC Events returned ${response.status}`);
-  const urls=eventUrls(await response.text()).slice(0,18);
+  const pages=await Promise.all([0,1,2,3,4].map(async page=>{
+    const response=await fetch(`${UFC_EVENTS_URL}${page?`?page=${page}`:''}`,{headers:requestHeaders,cf:{cacheTtl:900,cacheEverything:true}});
+    if(!response.ok)throw new Error(`UFC Events returned ${response.status}`);
+    return eventUrls(await response.text());
+  }));
+  const urls=unique(pages.flat()).slice(0,60);
   const records=await Promise.all(urls.map(async officialUrl=>{
     try{const eventResponse=await fetch(officialUrl,{headers:requestHeaders,cf:{cacheTtl:900,cacheEverything:true}});return eventResponse.ok?parseUfcEvent(await eventResponse.text(),officialUrl):null}catch{return null}
   }));
-  return Promise.all(records.filter(Boolean).map(officialUfcPoster));
+  return Promise.all(records.filter(event=>event&&event.startsAt?.startsWith('2026-')).map(officialUfcPoster));
 }
 
 function pancraseRecords(html){
