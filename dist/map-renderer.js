@@ -1,7 +1,7 @@
 const layoutLock=document.createElement('style');
 layoutLock.textContent=`
   .workspace{grid-template-columns:minmax(640px,680px) minmax(0,1fr)!important;align-items:start!important}
-  .detail-panel{grid-template-columns:395px minmax(0,1fr)!important;align-content:start!important;align-self:start!important;position:sticky!important;top:76px!important;max-height:none!important;overflow:visible!important}
+  .detail-panel{grid-template-columns:395px minmax(0,1fr)!important;align-content:start!important;align-self:start!important;max-height:none!important;overflow:visible!important}
   .event-info-panel h2{height:66px!important;overflow:hidden!important;display:-webkit-box!important;-webkit-box-orient:vertical!important;-webkit-line-clamp:2!important}
   .event-info-panel .detail-date{height:38px!important;overflow:hidden!important}
   .event-info-panel .info{height:94px!important;overflow:hidden!important}
@@ -9,6 +9,26 @@ layoutLock.textContent=`
   @media(max-width:700px){.detail-panel{grid-template-columns:1fr!important;position:static!important;max-height:none!important;overflow:visible!important}.event-info-panel h2{height:auto!important}.event-info-panel .detail-date,.event-info-panel .info{height:auto!important}}
 `;
 document.head.append(layoutLock);
+function pinDetailPanel(){
+  const panel=document.querySelector('.detail-panel'),header=document.querySelector('header');
+  if(!panel)return;
+  if(window.innerWidth<=1180){
+    ['position','top','left','width','maxHeight','overflowY'].forEach(property=>panel.style.removeProperty(property));
+    return;
+  }
+  panel.style.removeProperty('position');
+  panel.style.removeProperty('top');
+  panel.style.removeProperty('left');
+  panel.style.removeProperty('width');
+  const rect=panel.getBoundingClientRect();
+  panel.style.setProperty('position','fixed','important');
+  panel.style.setProperty('top',`${header?.offsetHeight||76}px`,'important');
+  panel.style.setProperty('left',`${rect.left}px`,'important');
+  panel.style.setProperty('width',`${rect.width}px`,'important');
+  panel.style.setProperty('max-height',`calc(100vh - ${header?.offsetHeight||76}px)`,'important');
+  panel.style.setProperty('overflow-y','auto','important');
+}
+window.addEventListener('resize',()=>requestAnimationFrame(pinDetailPanel));
 const detailRenderWithCards=renderDetail;
 const coordinates={
   'Las Vegas, USA':[36.1699,-115.1398],'Tokyo, Japan':[35.6762,139.6503],'Kobe, Japan':[34.6901,135.1956],
@@ -21,6 +41,7 @@ const coordinates={
 };
 renderDetail=()=>{
   detailRenderWithCards();
+  requestAnimationFrame(pinDetailPanel);
   const target=document.querySelector('.world-map');
   const normalized=String(active.city||'').toLowerCase();
   const matched=Object.entries(coordinates).find(([name])=>normalized.includes(name.split(',')[0].toLowerCase()));
