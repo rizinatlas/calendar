@@ -4,6 +4,7 @@ const UFC_EVENTS_URL='https://www.ufc.com/events#events-list-upcoming';
 const UFC_ORIGIN='https://www.ufc.com';
 const ROAD_TICKETS_URL='https://roadfc.com/main/ticket/ticket.php';
 const BLACK_EVENTS_URL='https://www.blackcombat-official.com/event.php';
+const DEEP_POSTS_URL='https://www.deep2001.com/wp-json/wp/v2/posts?after=2026-01-01T00:00:00&before=2027-01-01T00:00:00&per_page=100&_embed=1';
 const RIZIN_EVENTS_URL='https://jp.rizinff.com/_tags/%E5%A4%A7%E4%BC%9A%E6%83%85%E5%A0%B1';
 const RIZIN_ORIGIN='https://jp.rizinff.com';
 const UFC_POSTER_PRODUCTS={
@@ -14,8 +15,8 @@ const requestHeaders={'user-agent':'MMA Calendar schedule bot (+https://mmacalen
 const unique=items=>[...new Set(items)];
 
 function eventUrls(html){
-  return unique([...html.matchAll(/href=["']([^"']*\/event\/[^"'#?]+)["']/gi)]
-    .map(match=>new URL(match[1].replaceAll('&amp;','&'),UFC_ORIGIN).toString())
+  return unique([...html.matchAll(/href=["']([^"']*(?:\/event\/|\/index(?:%2e|\.)php\/event\/)[^"'#?]+)["']/gi)]
+    .map(match=>new URL(match[1].replaceAll('&amp;','&').replace('/index%2ephp/event/','/event/').replace('/index.php/event/','/event/'),UFC_ORIGIN).toString())
     .filter(url=>url.startsWith(`${UFC_ORIGIN}/event/`)));
 }
 
@@ -112,6 +113,8 @@ async function fetchRoadSchedule(){
 function blackCombatRecords(html){const records=[];for(const match of html.matchAll(/([\s\S]{0,1800}?)eventSeq=(\d+)/g)){const context=match[1],date=[...context.matchAll(/(2026)년\s*(\d{1,2})월\s*(\d{1,2})일/g)].pop();if(!date)continue;const [,year,month,day]=date;records.push({id:`black-combat-${match[2]}`,promotion:'BLACK COMBAT',date:`${year}-${month.padStart(2,'0')}-${day.padStart(2,'0')}`,officialUrl:`https://www.blackcombat-official.com/eventDetail.php?eventSeq=${match[2]}`,source:'BLACK COMBAT official event archive',fetchedAt:new Date().toISOString()})}return [...new Map(records.map(item=>[item.id,item])).values()]}
 function blackCombatDetails(html,event){const title=plainText(field(html,/<title[^>]*>\s*([^<|]+)/i)||'').replaceAll('BLACK COMBAT','').trim();const seq=event.id.split('-').pop();const poster=field(html,/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)/i)||`https://www.blackcombat-official.com/theme/blackcombat/img/event/${seq}/2.jpg`;return {...event,title:title||`BLACK COMBAT ${seq}`,city:'Seoul, Korea',venue:plainText(html.match(/(?:장소|장소 안내)\s*[:：]?\s*([^<\n]{2,80})/i)?.[1]||'공식 장소 확인 중'),posterUrl:poster.replace(/^\//,'https://www.blackcombat-official.com/'),posterType:'event-poster',posterSourceUrl:event.officialUrl}}
 async function fetchBlackCombatSchedule(){const response=await fetch(BLACK_EVENTS_URL,{headers:requestHeaders,cf:{cacheTtl:900,cacheEverything:true}});if(!response.ok)throw new Error(`BLACK COMBAT events returned ${response.status}`);const events=blackCombatRecords(await response.text());return Promise.all(events.map(async event=>{try{const detail=await fetch(event.officialUrl,{headers:requestHeaders,cf:{cacheTtl:900,cacheEverything:true}});return detail.ok?blackCombatDetails(await detail.text(),event):event}catch{return event}}))}
+function deepRecords(posts){const seen=new Set(),records=[];for(const post of posts){const title=plainText(post.title?.rendered||'');const content=plainText(post.content?.rendered||'');if(!/^DAYS Presents DEEP JEWELS|^DEEP(?: |　|\d|大阪|TOKYO)/i.test(title))continue;const date=content.match(/2026年\s*(\d{1,2})月\s*(\d{1,2})日/);if(!date)continue;const eventDate=`2026-${date[1].padStart(2,'0')}-${date[2].padStart(2,'0')}`,key=`${eventDate}-${title}`;if(seen.has(key))continue;seen.add(key);const image=post._embedded?.['wp:featuredmedia']?.[0]?.source_url||null;records.push({id:`deep-${post.id}`,promotion:title.includes('JEWELS')?'DEEP JEWELS':'DEEP',title,date:eventDate,city:title.includes('OSAKA')||content.includes('大阪')?'Osaka, Japan':'Tokyo, Japan',officialUrl:post.link,posterUrl:image,posterType:image?'event-poster':null,posterSourceUrl:image?post.link:null,source:'DEEP official homepage',fetchedAt:new Date().toISOString()})}return records}
+async function fetchDeepSchedule(){const response=await fetch(DEEP_POSTS_URL,{headers:requestHeaders,cf:{cacheTtl:1800,cacheEverything:true}});if(!response.ok)throw new Error(`DEEP posts returned ${response.status}`);return deepRecords(await response.json())}
 
 function rizinListingRecords(html){
   const records=[],seen=new Set();
@@ -167,6 +170,9 @@ export const onRequestGet=async({request})=>{
   }
   if(promotion==='black-combat'){
     try{return Response.json({schemaVersion:2,timezone:'Asia/Seoul',promotion:'BLACK COMBAT',source:BLACK_EVENTS_URL,events:await fetchBlackCombatSchedule()},{headers:{'cache-control':'public, max-age=900, stale-while-revalidate=3600'}})}catch{return Response.json({schemaVersion:2,timezone:'Asia/Seoul',promotion:'BLACK COMBAT',events:[],error:'official-source-temporarily-unavailable'},{headers:{'cache-control':'public, max-age=60'}})};
+  }
+  if(promotion==='deep'){
+    try{return Response.json({schemaVersion:2,timezone:'Asia/Tokyo',promotion:'DEEP',source:'https://www.deep2001.com/',events:await fetchDeepSchedule()},{headers:{'cache-control':'public, max-age=1800, stale-while-revalidate=7200'}})}catch{return Response.json({schemaVersion:2,timezone:'Asia/Tokyo',promotion:'DEEP',events:[],error:'official-source-temporarily-unavailable'},{headers:{'cache-control':'public, max-age=60'}})};
   }
   if(promotion==='rizin'){
     try{return Response.json({schemaVersion:2,timezone:'Asia/Tokyo',promotion:'RIZIN',source:RIZIN_EVENTS_URL,events:await fetchRizinSchedule()},{headers:{'cache-control':'public, max-age=900, stale-while-revalidate=3600'}})}
