@@ -7,7 +7,7 @@ renderDetail=()=>{
   const infoPanel=document.createElement('section');infoPanel.className='event-info-panel';
   const orderPanel=document.createElement('section');orderPanel.className='fight-order-panel';
   [tag,title,date,info,map].forEach(node=>node&&infoPanel.append(node));
-  const posterWrap=document.createElement('div');posterWrap.className='poster-wrap';posterWrap.innerHTML='<p>OFFICIAL PROMOTION POSTER</p>';posterWrap.append(poster);orderPanel.append(posterWrap);
+  if(active.posterUrl){const posterWrap=document.createElement('div');posterWrap.className='poster-wrap';const image=document.createElement('img');image.src=active.posterUrl;image.alt=`${active.n} 공식 포스터`;image.loading='lazy';image.onerror=()=>posterWrap.remove();posterWrap.append(image);orderPanel.append(posterWrap)}
   heading.textContent='FIGHT ORDER · MAIN EVENT & CO-MAIN EVENT';orderPanel.append(heading);
   fights.forEach((node,index)=>{if(index>1)node.classList.add('extra-fight');orderPanel.append(node)});
   if(fights.length>2){const more=document.createElement('button');more.className='show-all-fights';more.textContent=`모든 대진 보기 (${fights.length})`;more.onclick=()=>{orderPanel.classList.toggle('expanded');more.textContent=orderPanel.classList.contains('expanded')?'대진 접기':`모든 대진 보기 (${fights.length})`};orderPanel.append(more)}
