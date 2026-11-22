@@ -19,6 +19,8 @@ renderDetail();
 
 const compactCalendarStyle=document.createElement('style');
 compactCalendarStyle.textContent=`
+  .calendar-panel .event.major{background:#202826;color:#fff}
+  .calendar-panel .event.major span{color:#9ca4a2}
   .calendar-panel .day.compact-day .event{margin-top:3px;padding:4px 4px 4px 6px;font-size:11px;line-height:1.05}
   .calendar-panel .day.compact-day .event.major{font-size:12px}
 `;
