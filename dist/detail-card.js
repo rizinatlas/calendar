@@ -8,10 +8,11 @@ renderDetail=()=>{
   const orderPanel=document.createElement('section');orderPanel.className='fight-order-panel';
   [tag,title,date,info,map].forEach(node=>node&&infoPanel.append(node));
   const lang=document.documentElement.lang,labels=lang==='ja'?{heading:'FIGHT ORDER · 公式カード順',all:'全対戦を見る',close:'対戦を閉じる'}:lang==='en'?{heading:'FIGHT ORDER · OFFICIAL CARD ORDER',all:'View all fights',close:'Hide fights'}:{heading:'FIGHT ORDER · 공식 카드 순서',all:'모든 대진 보기',close:'대진 접기'};
-  links&&infoPanel.append(links);heading.textContent=labels.heading;infoPanel.append(heading);
-  status&&infoPanel.append(status);
-  fights.forEach((node,index)=>{if(index>1)node.classList.add('extra-fight');infoPanel.append(node)});
-  if(fights.length>2){const more=document.createElement('button');more.className='show-all-fights';more.textContent=`${labels.all} (${fights.length})`;more.onclick=()=>{infoPanel.classList.toggle('expanded');more.textContent=infoPanel.classList.contains('expanded')?labels.close:`${labels.all} (${fights.length})`};infoPanel.append(more)}
-  detail.replaceChildren(infoPanel);
+  heading.textContent=labels.heading;orderPanel.append(heading);
+  status&&orderPanel.append(status);
+  [...fights].reverse().forEach((node,index)=>{if(index>1)node.classList.add('extra-fight');orderPanel.append(node)});
+  if(fights.length>2){const more=document.createElement('button');more.className='show-all-fights';more.textContent=`${labels.all} (${fights.length})`;more.onclick=()=>{orderPanel.classList.toggle('expanded');more.textContent=orderPanel.classList.contains('expanded')?labels.close:`${labels.all} (${fights.length})`};orderPanel.append(more)}
+  links&&orderPanel.append(links);detail.replaceChildren(infoPanel,orderPanel);
+  const labelsInOrder=[...orderPanel.querySelectorAll('.fight strong')],total=labelsInOrder.length;labelsInOrder.forEach((label,index)=>{const order=index===0?'MAIN':index===1?'CO-MAIN':total-index;label.innerHTML=`${order}<br>VS`});
 };
 renderDetail();
