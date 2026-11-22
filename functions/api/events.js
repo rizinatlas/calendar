@@ -2,6 +2,7 @@ import {PROMOTION_SOURCES} from './sources.js';
 
 const UFC_EVENTS_URL='https://www.ufc.com/events#events-list-upcoming';
 const UFC_ORIGIN='https://www.ufc.com';
+const ROAD_TICKETS_URL='https://roadfc.com/main/ticket/ticket.php';
 const UFC_POSTER_PRODUCTS={
   'ufc-335':'https://ufccollectibles.com/es/products/ufc-335-oliveira-vs-lopes-autographed-event-poster?variant=67684020289784',
   'ufc-fight-night-december-05-2026':'https://ufccollectibles.com/products/ufc-fight-night-adesanya-vs-magomedov-autographed-event-poster'
@@ -74,12 +75,33 @@ async function fetchPancraseSchedule(){
   return pancraseRecords(await response.text());
 }
 
+function roadFcRecords(html){
+  const records=[];
+  const pattern=/class='bslush[^']*'><div class='tk_img'><img src='([^']+)'[\s\S]*?tk_tit'>(GOOBNE\s+ROAD\s+FC\s+(\d+))<\/div>[\s\S]{0,700}?(\d{4})-(\d{2})-(\d{2})/gi;
+  for(const match of html.matchAll(pattern)){
+    const [,imagePath,title,number,year,month,day]=match;
+    const date=`${year}-${month}-${day}`,posterUrl=new URL(imagePath,'https://roadfc.com').toString();
+    records.push({id:`road-fc-${number}`,promotion:'ROAD FC',title,number,date,city:'Seoul, Korea',venue:'장충체육관',officialUrl:ROAD_TICKETS_URL,instagramUrl:'https://www.instagram.com/roadfc/',posterUrl,posterType:'event-poster',posterSourceUrl:ROAD_TICKETS_URL,source:'ROAD FC ticket page',fetchedAt:new Date().toISOString()});
+  }
+  return records;
+}
+
+async function fetchRoadSchedule(){
+  const response=await fetch(ROAD_TICKETS_URL,{headers:requestHeaders,cf:{cacheTtl:900,cacheEverything:true}});
+  if(!response.ok)throw new Error(`ROAD FC tickets returned ${response.status}`);
+  return roadFcRecords(await response.text());
+}
+
 export const onRequestGet=async({request})=>{
   const url=new URL(request.url);
   const promotion=(url.searchParams.get('promotion')||'').toLowerCase();
   if(promotion==='pancrase'){
     try{return Response.json({schemaVersion:2,timezone:'Asia/Seoul',promotion:'PANCRASE',source:'https://www.pancrase.co.jp/rls/2026/schedule.html',events:await fetchPancraseSchedule()},{headers:{'cache-control':'public, max-age=1800, stale-while-revalidate=7200'}})}
     catch{return Response.json({schemaVersion:2,timezone:'Asia/Seoul',promotion:'PANCRASE',events:[],error:'official-source-temporarily-unavailable'},{headers:{'cache-control':'public, max-age=60'}})};
+  }
+  if(promotion==='road-fc'){
+    try{return Response.json({schemaVersion:2,timezone:'Asia/Seoul',promotion:'ROAD FC',source:ROAD_TICKETS_URL,events:await fetchRoadSchedule()},{headers:{'cache-control':'public, max-age=900, stale-while-revalidate=3600'}})}
+    catch{return Response.json({schemaVersion:2,timezone:'Asia/Seoul',promotion:'ROAD FC',events:[],error:'official-source-temporarily-unavailable'},{headers:{'cache-control':'public, max-age=60'}})};
   }
   if(promotion&&promotion!=='ufc'){
     const source=PROMOTION_SOURCES.find(item=>item.id===promotion||item.name.toLowerCase()===promotion);
