@@ -40,9 +40,32 @@ async function fetchUfcSchedule(){
   return records.filter(Boolean);
 }
 
+function pancraseRecords(html){
+  const text=html.replaceAll(/<[^>]*>/g,' ').replaceAll(/\s+/g,' ');
+  const pattern=/PANCRASE\s*(BLOOD\.\s*\d+|\d{3})\s*(\d{1,2})月(\d{1,2})日/g;
+  const records=[];
+  for(const match of text.matchAll(pattern)){
+    const number=match[1].replaceAll(/\s+/g,'');
+    const date=`2026-${match[2].padStart(2,'0')}-${match[3].padStart(2,'0')}`;
+    const slug=number.startsWith('BLOOD')?number.toLowerCase().replace('.',''):number.toLowerCase();
+    records.push({id:`pancrase-${slug}`,promotion:'PANCRASE',title:`PANCRASE ${number}`,date,officialUrl:`https://www.pancrase.co.jp/tour/2026/pancrase${slug}/index.html`,posterStatus:'official-page-pending-verification',source:'PANCRASE 2026 schedule',fetchedAt:new Date().toISOString()});
+  }
+  return records;
+}
+
+async function fetchPancraseSchedule(){
+  const response=await fetch('https://www.pancrase.co.jp/rls/2026/schedule.html',{headers:requestHeaders,cf:{cacheTtl:1800,cacheEverything:true}});
+  if(!response.ok)throw new Error(`PANCRASE schedule returned ${response.status}`);
+  return pancraseRecords(await response.text());
+}
+
 export const onRequestGet=async({request})=>{
   const url=new URL(request.url);
   const promotion=(url.searchParams.get('promotion')||'').toLowerCase();
+  if(promotion==='pancrase'){
+    try{return Response.json({schemaVersion:2,timezone:'Asia/Seoul',promotion:'PANCRASE',source:'https://www.pancrase.co.jp/rls/2026/schedule.html',events:await fetchPancraseSchedule()},{headers:{'cache-control':'public, max-age=1800, stale-while-revalidate=7200'}})}
+    catch{return Response.json({schemaVersion:2,timezone:'Asia/Seoul',promotion:'PANCRASE',events:[],error:'official-source-temporarily-unavailable'},{headers:{'cache-control':'public, max-age=60'}})};
+  }
   if(promotion&&promotion!=='ufc'){
     const source=PROMOTION_SOURCES.find(item=>item.id===promotion||item.name.toLowerCase()===promotion);
     if(!source)return Response.json({error:'Unsupported promotion'},{status:404});
