@@ -7,5 +7,6 @@ const SOURCES={
   ROMAN:'https://www.instagram.com/roman_mma_official/',RISE:'https://rise-rc.com/',K1:'https://www.k-1.co.jp/',BREAKING_DOWN:'https://breakingdown.jp/',
   'UAE Warriors':'https://uae-warriors.com/', 'BRAVE CF':'https://bravecfs.com/', 'OPEN FC':'https://openfc.tv/', 'EAGLE FC':'https://eaglefc.com/',
   'MANGO FC':'https://www.instagram.com/mango_fight_official/',ECW:'https://www.instagram.com/ecw_mma/', 'JCK':'https://www.jckmma.com/'
+  ,RCC:'https://t.me/rcc_sport', 'RCC Fair Fight':'https://rcc-sport.com/'
 };
 export const onRequestGet=()=>Response.json({sources:SOURCES,refreshStrategy:'Promotion-specific adapters; respect source terms, robots policies, and rate limits.'});
