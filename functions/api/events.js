@@ -104,7 +104,9 @@ async function fetchRoadSchedule(){
 
 function rizinListingRecords(html){
   const records=[],seen=new Set();
-  for(const match of html.matchAll(/<a\b[^>]*href=["']([^"']*\/_ct\/\d+[^"']*)["'][^>]*>([\s\S]*?)<\/a>/gi)){
+  const eventIndex=html.indexOf('関連情報');
+  const eventSection=eventIndex>0?html.slice(0,eventIndex):html;
+  for(const match of eventSection.matchAll(/<a\b[^>]*href=["']([^"']*\/_ct\/\d+[^"']*)["'][^>]*>([\s\S]*?)<\/a>/gi)){
     const parsedUrl=new URL(match[1].replaceAll('&amp;','&'),RIZIN_ORIGIN);
     parsedUrl.search='';
     const officialUrl=parsedUrl.toString();
