@@ -10,7 +10,16 @@ const coordinates={
 };
 renderDetail=()=>{
   detailRenderWithCards();
-  const target=document.querySelector('.world-map'),point=coordinates[active.city];
+  const target=document.querySelector('.world-map');
+  const normalized=String(active.city||'').toLowerCase();
+  const matched=Object.entries(coordinates).find(([name])=>normalized.includes(name.split(',')[0].toLowerCase()));
+  const countryFallback=normalized.includes('japan')?coordinates['Tokyo, Japan']:
+    normalized.includes('korea')?coordinates['Seoul, Korea']:
+    normalized.includes('thailand')?coordinates['Bangkok, Thailand']:
+    normalized.includes('vietnam')?coordinates['Ho Chi Minh City, Vietnam']:
+    normalized.includes('uae')?coordinates['Abu Dhabi, UAE']:
+    normalized.includes('china')?coordinates['Shanghai, China']:null;
+  const point=coordinates[active.city]||matched?.[1]||countryFallback;
   if(!target||!point||!window.L)return;
   target.replaceChildren();
   const map=L.map(target,{zoomControl:false,attributionControl:true,scrollWheelZoom:false,dragging:false}).setView(point,4);
