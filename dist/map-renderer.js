@@ -3,7 +3,8 @@ const coordinates={
   'Las Vegas, USA':[36.1699,-115.1398],'Tokyo, Japan':[35.6762,139.6503],'Kobe, Japan':[34.6901,135.1956],
   'Bangkok, Thailand':[13.7563,100.5018],'Abu Dhabi, UAE':[24.4539,54.3773],'Ho Chi Minh City, Vietnam':[10.8231,106.6297],
   'Riyadh, Saudi Arabia':[24.7136,46.6753],'Doha, Qatar':[25.2854,51.5310],'Shanghai, China':[31.2304,121.4737],'Gliwice, Poland':[50.2945,18.6714],
-  'Yokohama, Japan':[35.4437,139.6380],'Nagoya, Japan':[35.1815,136.9066],'Dallas, USA':[32.7767,-96.7970],'Toronto, Canada':[43.6532,-79.3832]
+  'Yokohama, Japan':[35.4437,139.6380],'Nagoya, Japan':[35.1815,136.9066],'Dallas, USA':[32.7767,-96.7970],'Toronto, Canada':[43.6532,-79.3832],
+  'Seoul, Korea':[37.4980,126.8670]
 };
 renderDetail=()=>{
   detailRenderWithCards();
