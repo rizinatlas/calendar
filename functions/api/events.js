@@ -41,7 +41,7 @@ async function officialUfcPoster(event){
   try{
     const response=await fetch(sourceUrl,{headers:requestHeaders,cf:{cacheTtl:3600,cacheEverything:true}});
     const posterUrl=response.ok?field(await response.text(),/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)/i):null;
-    return posterUrl?{...event,posterUrl,posterType:'event-poster',posterSourceUrl:sourceUrl}:event;
+    return posterUrl?{...event,posterUrl:posterUrl.replace(/^http:/,'https:'),posterType:'event-poster',posterSourceUrl:sourceUrl}:event;
   }catch{return event}
 }
 
