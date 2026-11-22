@@ -3,6 +3,8 @@ import {PROMOTION_SOURCES} from './sources.js';
 const UFC_EVENTS_URL='https://www.ufc.com/events#events-list-upcoming';
 const UFC_ORIGIN='https://www.ufc.com';
 const ROAD_TICKETS_URL='https://roadfc.com/main/ticket/ticket.php';
+const RIZIN_EVENTS_URL='https://jp.rizinff.com/_tags/%E5%A4%A7%E4%BC%9A%E6%83%85%E5%A0%B1';
+const RIZIN_ORIGIN='https://jp.rizinff.com';
 const UFC_POSTER_PRODUCTS={
   'ufc-335':'https://ufccollectibles.com/es/products/ufc-335-oliveira-vs-lopes-autographed-event-poster?variant=67684020289784',
   'ufc-fight-night-december-05-2026':'https://ufccollectibles.com/products/ufc-fight-night-adesanya-vs-magomedov-autographed-event-poster'
@@ -17,6 +19,14 @@ function eventUrls(html){
 }
 
 function field(html,pattern){return html.match(pattern)?.[1]?.trim()||null}
+function plainText(value=''){return value.replaceAll(/<[^>]*>/g,' ').replaceAll(/&nbsp;/g,' ').replaceAll(/&#x([0-9a-f]+);/gi,(_,code)=>String.fromCodePoint(parseInt(code,16))).replaceAll(/&#(\d+);/g,(_,code)=>String.fromCodePoint(Number(code))).replaceAll(/&amp;/g,'&').replaceAll(/&quot;/g,'\"').replaceAll(/\s+/g,' ').trim()}
+function metaContent(html,name){
+  for(const tag of html.matchAll(/<meta\b[^>]*>/gi)){
+    const value=tag[0];
+    if(new RegExp(`(?:property|name)=["']${name}["']`,'i').test(value))return field(value,/content=["']([^"']+)["']/i);
+  }
+  return null;
+}
 function parseUfcEvent(html,officialUrl){
   const title=field(html,/<meta[^>]+property=["']og:title["'][^>]+content=["']([^"']+)/i)||field(html,/<title[^>]*>\s*([^<|]+)/i);
   if(!title)return null;
@@ -92,6 +102,42 @@ async function fetchRoadSchedule(){
   return roadFcRecords(await response.text());
 }
 
+function rizinListingRecords(html){
+  const records=[],seen=new Set();
+  for(const match of html.matchAll(/<a\b[^>]*href=["']([^"']*\/_ct\/\d+[^"']*)["'][^>]*>([\s\S]*?)<\/a>/gi)){
+    const officialUrl=new URL(match[1].replaceAll('&amp;','&'),RIZIN_ORIGIN).toString();
+    const label=plainText(match[2]);
+    const dateMatch=label.match(/(20\d{2})年\s*(\d{1,2})月\s*(\d{1,2})日\s*(.+)/);
+    if(!dateMatch||seen.has(officialUrl))continue;
+    const [,year,month,day,title]=dateMatch;
+    seen.add(officialUrl);
+    records.push({id:`rizin-${officialUrl.match(/_ct\/(\d+)/)?.[1]}`,promotion:'RIZIN',title:plainText(title),date:`${year}-${month.padStart(2,'0')}-${day.padStart(2,'0')}`,officialUrl});
+  }
+  return records;
+}
+
+function rizinDetails(html,event){
+  const text=plainText(html);
+  const start=text.match(/(\d{1,2})[：:](\d{2})\s*開始/);
+  const venue=text.match(/(?:会場|開催場所)\s*([^\s][\s\S]{0,100}?)(?=(?:アクセス|主催|制作協力|対戦カード|チケット|配信情報|FOR FANS|$))/);
+  const heading=plainText(field(html,/<h1\b[^>]*>([\s\S]*?)<\/h1>/i)||'').replace(/^[『「]|[』」]$/g,'').replace(/大会概要|チケット|[／/]/g,' ').replaceAll(/\s+/g,' ').trim();
+  const posterUrl=metaContent(html,'og:image');
+  return {...event,title:heading||event.title,venue:venue?plainText(venue[1]):null,startsAtLocal:start?`${start[1].padStart(2,'0')}:${start[2]}`:null,posterUrl:posterUrl?.replace(/^http:/,'https:')||null,posterType:posterUrl?'event-poster':null,posterSourceUrl:posterUrl?event.officialUrl:null,posterStatus:posterUrl?'official-event-page':'official-poster-not-published',source:'RIZIN official event page',fetchedAt:new Date().toISOString()};
+}
+
+async function fetchRizinSchedule(){
+  const response=await fetch(RIZIN_EVENTS_URL,{headers:requestHeaders,cf:{cacheTtl:900,cacheEverything:true}});
+  if(!response.ok)throw new Error(`RIZIN event list returned ${response.status}`);
+  const listed=rizinListingRecords(await response.text()).filter(event=>event.date>='2026-01-01').slice(0,24);
+  const records=await Promise.all(listed.map(async event=>{
+    try{
+      const detail=await fetch(event.officialUrl,{headers:requestHeaders,cf:{cacheTtl:900,cacheEverything:true}});
+      return detail.ok?rizinDetails(await detail.text(),event):event;
+    }catch{return event}
+  }));
+  return records;
+}
+
 export const onRequestGet=async({request})=>{
   const url=new URL(request.url);
   const promotion=(url.searchParams.get('promotion')||'').toLowerCase();
@@ -102,6 +148,10 @@ export const onRequestGet=async({request})=>{
   if(promotion==='road-fc'){
     try{return Response.json({schemaVersion:2,timezone:'Asia/Seoul',promotion:'ROAD FC',source:ROAD_TICKETS_URL,events:await fetchRoadSchedule()},{headers:{'cache-control':'public, max-age=900, stale-while-revalidate=3600'}})}
     catch{return Response.json({schemaVersion:2,timezone:'Asia/Seoul',promotion:'ROAD FC',events:[],error:'official-source-temporarily-unavailable'},{headers:{'cache-control':'public, max-age=60'}})};
+  }
+  if(promotion==='rizin'){
+    try{return Response.json({schemaVersion:2,timezone:'Asia/Tokyo',promotion:'RIZIN',source:RIZIN_EVENTS_URL,events:await fetchRizinSchedule()},{headers:{'cache-control':'public, max-age=900, stale-while-revalidate=3600'}})}
+    catch{return Response.json({schemaVersion:2,timezone:'Asia/Tokyo',promotion:'RIZIN',source:RIZIN_EVENTS_URL,events:[],error:'official-source-temporarily-unavailable'},{headers:{'cache-control':'public, max-age=60'}})};
   }
   if(promotion&&promotion!=='ufc'){
     const source=PROMOTION_SOURCES.find(item=>item.id===promotion||item.name.toLowerCase()===promotion);
