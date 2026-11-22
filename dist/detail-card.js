@@ -9,10 +9,11 @@ renderDetail=()=>{
   [tag,title,date,info,map].forEach(node=>node&&infoPanel.append(node));
   let posterWrap;
   if(active.posterUrl&&active.posterType==='event-poster'){posterWrap=document.createElement('div');posterWrap.className='poster-wrap poster-under-card';const image=document.createElement('img');image.src=active.posterUrl;image.alt=`${active.n} 공식 포스터`;image.loading='lazy';image.onerror=()=>posterWrap.remove();posterWrap.append(image)}
-  heading.textContent='FIGHT ORDER · 공식 카드 순서';orderPanel.append(heading);
-  status&&orderPanel.append(status);
-  fights.forEach((node,index)=>{if(index>1)node.classList.add('extra-fight');orderPanel.append(node)});
-  if(fights.length>2){const more=document.createElement('button');more.className='show-all-fights';more.textContent=`모든 대진 보기 (${fights.length})`;more.onclick=()=>{orderPanel.classList.toggle('expanded');more.textContent=orderPanel.classList.contains('expanded')?'대진 접기':`모든 대진 보기 (${fights.length})`};orderPanel.append(more)}
-  links&&orderPanel.append(links);posterWrap&&orderPanel.append(posterWrap);detail.replaceChildren(infoPanel,orderPanel);
+  const lang=document.documentElement.lang,labels=lang==='ja'?{heading:'FIGHT ORDER · 公式カード順',all:'全対戦を見る',close:'対戦を閉じる'}:lang==='en'?{heading:'FIGHT ORDER · OFFICIAL CARD ORDER',all:'View all fights',close:'Hide fights'}:{heading:'FIGHT ORDER · 공식 카드 순서',all:'모든 대진 보기',close:'대진 접기'};
+  heading.textContent=labels.heading;infoPanel.append(heading);
+  status&&infoPanel.append(status);
+  fights.forEach((node,index)=>{if(index>1)node.classList.add('extra-fight');infoPanel.append(node)});
+  if(fights.length>2){const more=document.createElement('button');more.className='show-all-fights';more.textContent=`${labels.all} (${fights.length})`;more.onclick=()=>{infoPanel.classList.toggle('expanded');more.textContent=infoPanel.classList.contains('expanded')?labels.close:`${labels.all} (${fights.length})`};infoPanel.append(more)}
+  links&&infoPanel.append(links);posterWrap&&infoPanel.append(posterWrap);detail.replaceChildren(infoPanel);
 };
 renderDetail();
