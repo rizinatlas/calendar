@@ -105,10 +105,12 @@ async function fetchRoadSchedule(){
 function rizinListingRecords(html){
   const records=[],seen=new Set();
   for(const match of html.matchAll(/<a\b[^>]*href=["']([^"']*\/_ct\/\d+[^"']*)["'][^>]*>([\s\S]*?)<\/a>/gi)){
-    const officialUrl=new URL(match[1].replaceAll('&amp;','&'),RIZIN_ORIGIN).toString();
+    const parsedUrl=new URL(match[1].replaceAll('&amp;','&'),RIZIN_ORIGIN);
+    parsedUrl.search='';
+    const officialUrl=parsedUrl.toString();
     const label=plainText(match[2]);
     const dateMatch=label.match(/(20\d{2})年\s*(\d{1,2})月\s*(\d{1,2})日\s*(.+)/);
-    if(!dateMatch||seen.has(officialUrl))continue;
+    if(!dateMatch||!/RIZIN|BELLATOR/i.test(dateMatch[4])||/発売|先行|来場|案内|受付|チケット|会見|スタート|販売|ご案内|PPV/.test(dateMatch[4])||seen.has(officialUrl))continue;
     const [,year,month,day,title]=dateMatch;
     seen.add(officialUrl);
     records.push({id:`rizin-${officialUrl.match(/_ct\/(\d+)/)?.[1]}`,promotion:'RIZIN',title:plainText(title),date:`${year}-${month.padStart(2,'0')}-${day.padStart(2,'0')}`,officialUrl});
@@ -119,10 +121,11 @@ function rizinListingRecords(html){
 function rizinDetails(html,event){
   const text=plainText(html);
   const start=text.match(/(\d{1,2})[：:](\d{2})\s*開始/);
-  const venue=text.match(/(?:会場|開催場所)\s*([^\s][\s\S]{0,100}?)(?=(?:アクセス|主催|制作協力|対戦カード|チケット|配信情報|FOR FANS|$))/);
-  const heading=plainText(field(html,/<h1\b[^>]*>([\s\S]*?)<\/h1>/i)||'').replace(/^[『「]|[』」]$/g,'').replace(/大会概要|チケット|[／/]/g,' ').replaceAll(/\s+/g,' ').trim();
+  const venueSection=field(html,/<h3\b[^>]*>\s*会場\s*<\/h3>([\s\S]*?)(?=<h[23]\b|$)/i);
+  const venue=venueSection?plainText(venueSection).split(/アクセス|主催|制作協力|対戦カード|チケット|配信情報/)[0].trim():null;
+  const heading=plainText(field(html,/<h1\b[^>]*>([\s\S]*?)<\/h1>/i)||'').replaceAll(/[『「』」]/g,'').replace(/大会概要|チケット|[／/]/g,' ').replaceAll(/\s+/g,' ').trim();
   const posterUrl=metaContent(html,'og:image');
-  return {...event,title:heading||event.title,venue:venue?plainText(venue[1]):null,startsAtLocal:start?`${start[1].padStart(2,'0')}:${start[2]}`:null,posterUrl:posterUrl?.replace(/^http:/,'https:')||null,posterType:posterUrl?'event-poster':null,posterSourceUrl:posterUrl?event.officialUrl:null,posterStatus:posterUrl?'official-event-page':'official-poster-not-published',source:'RIZIN official event page',fetchedAt:new Date().toISOString()};
+  return {...event,title:heading||event.title,venue,startsAtLocal:start?`${start[1].padStart(2,'0')}:${start[2]}`:null,posterUrl:posterUrl?.replace(/^http:/,'https:')||null,posterType:posterUrl?'event-poster':null,posterSourceUrl:posterUrl?event.officialUrl:null,posterStatus:posterUrl?'official-event-page':'official-poster-not-published',source:'RIZIN official event page',fetchedAt:new Date().toISOString()};
 }
 
 async function fetchRizinSchedule(){
