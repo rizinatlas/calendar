@@ -7,6 +7,7 @@ export const PROMOTION_SOURCES=[
 ].map(([name,categories,homepage,scheduleUrl,instagramUrl,posterArchiveUrl])=>({id:name.toLowerCase().replaceAll(/[^a-z0-9]+/g,'-'),name,categories,homepage,scheduleUrl,instagramUrl,posterArchiveUrl,mode:scheduleUrl?'automated':'official-social-manual'}));
 
 PROMOTION_SOURCES.push({id:'heat',name:'HEAT',categories:['japan'],homepage:'https://heatofficial.com/',scheduleUrl:'https://heatofficial.com/',instagramUrl:null,posterArchiveUrl:null,mode:'automated'});
+PROMOTION_SOURCES.push({id:'ring-c',name:'RING C.',categories:['korea'],homepage:'https://www.instagram.com/ringchampionship/',scheduleUrl:null,instagramUrl:'https://www.instagram.com/ringchampionship/',posterArchiveUrl:null,mode:'official-social-manual'});
 
 const afcSource=PROMOTION_SOURCES.find(source=>source.name==='AFC');
 if(afcSource){afcSource.homepage='https://www.instagram.com/angels_fighting_official/';afcSource.instagramUrl='https://www.instagram.com/angels_fighting_official/';afcSource.mode='official-social-manual'}
