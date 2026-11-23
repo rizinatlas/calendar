@@ -5,7 +5,7 @@ const UFC_ORIGIN='https://www.ufc.com';
 const ROAD_TICKETS_URL='https://roadfc.com/main/ticket/ticket.php';
 const ROAD_HOME_URL='https://m.roadfc.co.kr/main/index.php';
 const BLACK_EVENTS_URL='https://www.blackcombat-official.com/event.php';
-const DEEP_POSTS_URL='https://www.deep2001.com/wp-json/wp/v2/posts?after=2026-01-01T00:00:00&before=2027-01-01T00:00:00&per_page=100&_embed=1';
+const DEEP_POSTS_URL='https://www.deep2001.com/wp-json/wp/v2/posts?after=2026-01-01T00:00:00&before=2028-01-01T00:00:00&per_page=100&_embed=1';
 const ONE_EVENTS_URL='https://www.onefc.com/events/';
 const ZFN_EVENTS_URL='https://zfnofficial.com/84';
 const RIZIN_EVENTS_URL='https://jp.rizinff.com/_tags/%E5%A4%A7%E4%BC%9A%E6%83%85%E5%A0%B1';
@@ -78,23 +78,25 @@ async function fetchUfcSchedule(){
   return Promise.all(records.filter(event=>event&&event.startsAt?.startsWith('2026-')).map(officialUfcPoster));
 }
 
-function pancraseRecords(html){
+function pancraseRecords(html,year){
   const text=html.replaceAll(/<[^>]*>/g,' ').replaceAll(/\s+/g,' ');
   const pattern=/PANCRASE\s*(BLOOD\.\s*\d+|\d{3})\s*(\d{1,2})月(\d{1,2})日/g;
   const records=[];
   for(const match of text.matchAll(pattern)){
     const number=match[1].replaceAll(/\s+/g,'');
-    const date=`2026-${match[2].padStart(2,'0')}-${match[3].padStart(2,'0')}`;
+    const date=`${year}-${match[2].padStart(2,'0')}-${match[3].padStart(2,'0')}`;
     const slug=number.startsWith('BLOOD')?number.toLowerCase().replace('.',''):number.toLowerCase();
-    records.push({id:`pancrase-${slug}`,promotion:'PANCRASE',title:`PANCRASE ${number}`,date,officialUrl:`https://www.pancrase.co.jp/tour/2026/pancrase${slug}/index.html`,posterStatus:'official-page-pending-verification',source:'PANCRASE 2026 schedule',fetchedAt:new Date().toISOString()});
+    records.push({id:`pancrase-${year}-${slug}`,promotion:'PANCRASE',title:`PANCRASE ${number}`,date,officialUrl:`https://www.pancrase.co.jp/rls/${year}/schedule.html`,posterStatus:'official-page-pending-verification',source:`PANCRASE ${year} schedule`,fetchedAt:new Date().toISOString()});
   }
   return records;
 }
 
 async function fetchPancraseSchedule(){
-  const response=await fetch('https://www.pancrase.co.jp/rls/2026/schedule.html',{headers:requestHeaders,cf:{cacheTtl:1800,cacheEverything:true}});
-  if(!response.ok)throw new Error(`PANCRASE schedule returned ${response.status}`);
-  return pancraseRecords(await response.text());
+  const years=[2026,2027];
+  const responses=await Promise.all(years.map(async year=>{try{const response=await fetch(`https://www.pancrase.co.jp/rls/${year}/schedule.html`,{headers:requestHeaders,cf:{cacheTtl:1800,cacheEverything:true}});return response.ok?pancraseRecords(await response.text(),year):[]}catch{return []}}));
+  const records=responses.flat();
+  if(!records.length)throw new Error('PANCRASE schedules unavailable');
+  return [...new Map(records.map(record=>[record.id,record])).values()];
 }
 
 function roadFcRecords(html){
@@ -134,7 +136,7 @@ async function fetchRoadSchedule(){
 function blackCombatRecords(html){const records=[];for(const match of html.matchAll(/([\s\S]{0,1800}?)eventSeq=(\d+)/g)){const context=match[1],date=[...context.matchAll(/(2026)년\s*(\d{1,2})월\s*(\d{1,2})일/g)].pop();if(!date)continue;const [,year,month,day]=date;records.push({id:`black-combat-${match[2]}`,promotion:'BLACK COMBAT',date:`${year}-${month.padStart(2,'0')}-${day.padStart(2,'0')}`,officialUrl:`https://www.blackcombat-official.com/eventDetail.php?eventSeq=${match[2]}`,source:'BLACK COMBAT official event archive',fetchedAt:new Date().toISOString()})}return [...new Map(records.map(item=>[item.id,item])).values()]}
 function blackCombatDetails(html,event){const title=plainText(field(html,/<title[^>]*>\s*([^<|]+)/i)||'').replaceAll('BLACK COMBAT','').trim();const seq=event.id.split('-').pop();const poster=field(html,/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)/i)||`https://www.blackcombat-official.com/theme/blackcombat/img/event/${seq}/2.jpg`;return {...event,title:title||`BLACK COMBAT ${seq}`,city:'Seoul, Korea',venue:plainText(html.match(/(?:장소|장소 안내)\s*[:：]?\s*([^<\n]{2,80})/i)?.[1]||'공식 장소 확인 중'),posterUrl:poster.replace(/^\//,'https://www.blackcombat-official.com/'),posterType:'event-poster',posterSourceUrl:event.officialUrl}}
 async function fetchBlackCombatSchedule(){const response=await fetch(BLACK_EVENTS_URL,{headers:requestHeaders,cf:{cacheTtl:900,cacheEverything:true}});if(!response.ok)throw new Error(`BLACK COMBAT events returned ${response.status}`);const events=blackCombatRecords(await response.text());return Promise.all(events.map(async event=>{try{const detail=await fetch(event.officialUrl,{headers:requestHeaders,cf:{cacheTtl:900,cacheEverything:true}});return detail.ok?blackCombatDetails(await detail.text(),event):event}catch{return event}}))}
-function deepRecords(posts){const records=[],posterByEvent=new Map();const canonical=/^(?:DEEP \d+ IMPACT|DEEP (?:TOKYO|OSAKA) IMPACT 2026 \d+(?:st|nd|rd|th) ROUND|DEEP FIGHT CHALLENGE 2026 \d+(?:st|nd|rd|th) ROUND|DEEP JEWELS \d+)$/i;for(const post of posts){const title=plainText(post.title?.rendered||'');if(!/ポスター画像/.test(title))continue;const eventTitle=title.replace(/^.*?Presents\s*/i,'').replace(/のポスター画像.*$/,'');const image=field(post.content?.rendered||'',/<img\b[^>]*\bsrc=["']([^"']+)/i);if(canonical.test(eventTitle)&&image)posterByEvent.set(eventTitle,image.replace(/^http:/,'https:'))}for(const post of posts){const title=plainText(post.title?.rendered||'');const content=plainText(post.content?.rendered||'');if(!canonical.test(title))continue;const date=content.match(/2026年\s*(\d{1,2})月\s*(\d{1,2})日/);if(!date)continue;const eventDate=`2026-${date[1].padStart(2,'0')}-${date[2].padStart(2,'0')}`,posterUrl=posterByEvent.get(title)||null;records.push({id:`deep-${post.id}`,promotion:title.includes('JEWELS')?'DEEP JEWELS':'DEEP',title,date:eventDate,city:title.includes('OSAKA')||content.includes('大阪')?'Osaka, Japan':'Tokyo, Japan',officialUrl:post.link,posterUrl,posterType:posterUrl?'event-poster':null,posterSourceUrl:posterUrl?post.link:null,source:'DEEP official homepage',fetchedAt:new Date().toISOString()})}return records}
+function deepRecords(posts){const records=[],posterByEvent=new Map();const canonical=/^(?:DEEP \d+ IMPACT|DEEP (?:TOKYO|OSAKA|NAGOYA|HAMAMATSU) IMPACT 20\d{2} (?:\d+(?:st|nd|rd|th) ROUND|(?:FIRST|SECOND|THIRD) STAGE)|DEEP FIGHT CHALLENGE 20\d{2} \d+(?:st|nd|rd|th) ROUND|DEEP JEWELS \d+)$/i;for(const post of posts){const title=plainText(post.title?.rendered||'');if(!/ポスター画像/.test(title))continue;const eventTitle=title.replace(/^.*?Presents\s*/i,'').replace(/のポスター画像.*$/,'');const image=field(post.content?.rendered||'',/<img\b[^>]*\bsrc=["']([^"']+)/i);if(canonical.test(eventTitle)&&image)posterByEvent.set(eventTitle,image.replace(/^http:/,'https:'))}for(const post of posts){const title=plainText(post.title?.rendered||'');const content=plainText(post.content?.rendered||'');if(!canonical.test(title))continue;const date=content.match(/(20\d{2})年\s*(\d{1,2})月\s*(\d{1,2})日/);if(!date)continue;const eventDate=`${date[1]}-${date[2].padStart(2,'0')}-${date[3].padStart(2,'0')}`,posterUrl=posterByEvent.get(title)||null;const city=title.includes('OSAKA')||content.includes('大阪')?'Osaka, Japan':title.includes('NAGOYA')||content.includes('名古屋')?'Nagoya, Japan':'Tokyo, Japan';records.push({id:`deep-${post.id}`,promotion:title.includes('JEWELS')?'DEEP JEWELS':'DEEP',title,date:eventDate,city,officialUrl:post.link,posterUrl,posterType:posterUrl?'event-poster':null,posterSourceUrl:posterUrl?post.link:null,source:'DEEP official homepage',fetchedAt:new Date().toISOString()})}return records}
 async function fetchDeepSchedule(){const response=await fetch(DEEP_POSTS_URL,{headers:requestHeaders,cf:{cacheTtl:1800,cacheEverything:true}});if(!response.ok)throw new Error(`DEEP posts returned ${response.status}`);return deepRecords(await response.json())}
 function oneRecords(html){const events=[];for(const match of html.matchAll(/<a\b[^>]*href=["'](https:\/\/www\.onefc\.com\/events\/[^"']+)["'][^>]*>([\s\S]{0,2800}?)<\/a>/gi)){const [,officialUrl,card]=match;const title=plainText(field(card,/<(?:span|h3)\b[^>]*class=["'][^"']*title[^"']*["'][^>]*>([\s\S]*?)<\//i)||'');const timestamp=field(card,/data-timestamp=["'](\d+)["']/i);if(!title||!timestamp)continue;const date=new Date(Number(timestamp)*1000).toISOString().slice(0,10);if(!date.startsWith('2026-'))continue;const posterUrl=field(card,/<img\b[^>]*\bsrc=["']([^"']+)/i)?.replace(/^http:/,'https:')||null;const venue=plainText(field(card,/<div\b[^>]*class=["']location["'][^>]*>([\s\S]*?)<\//i)||'');events.push({id:`one-${officialUrl.split('/').filter(Boolean).pop()}`,promotion:'ONE',title,date,city:venue,venue,officialUrl,startsAt:new Date(Number(timestamp)*1000).toISOString(),posterUrl,posterType:posterUrl?'event-poster':null,posterSourceUrl:posterUrl?officialUrl:null,source:'ONE Championship official events',fetchedAt:new Date().toISOString()})}return [...new Map(events.map(event=>[event.officialUrl,event])).values()]}
 async function fetchOneSchedule(){const response=await fetch(ONE_EVENTS_URL,{headers:requestHeaders,cf:{cacheTtl:900,cacheEverything:true}});if(!response.ok)throw new Error(`ONE Events returned ${response.status}`);return oneRecords(await response.text())}
