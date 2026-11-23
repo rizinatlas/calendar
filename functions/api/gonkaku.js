@@ -14,9 +14,9 @@ function listingRecords(html){
     const label=clean(match[2]),dateMatch=label.match(/(20\d{2})年\s*(\d{1,2})月\s*(\d{1,2})日/),promotion=promotionFor(label);
     if(!dateMatch||!promotion)continue;
     const [,year,month,day]=dateMatch,date=`${year}-${month.padStart(2,'0')}-${day.padStart(2,'0')}`;
-    const title=label.slice(0,dateMatch.index).replace(/^(?:MMA|キックボクシング|シュートボクシング|ストライキング)\s*/,'').trim();
-    const id=`${promotion[1]}-${date}-${title}`.toLowerCase().replaceAll(/[^a-z0-9]+/g,'-');
-    if(!seen.has(id)){seen.add(id);records.push({id,promotion:promotion[1],title,date,categories:promotion[2],venue:label.slice((dateMatch.index||0)+dateMatch[0].length).trim()||'공식 장소 확인 중',referenceUrl:new URL(match[1].replaceAll('&amp;','&'),ORIGIN).toString(),source:'GONG Kakutogi event calendar',fetchedAt:new Date().toISOString()})}
+    const title=label.slice(0,dateMatch.index).replace(/^(?:MMA|キックボクシング|シュートボクシング|ストライキング)\s*/,'').trim(),referenceUrl=new URL(match[1].replaceAll('&amp;','&'),ORIGIN).toString();
+    const id=`${promotion[1]}-${date}-${new URL(referenceUrl).pathname}`.toLowerCase();
+    if(!seen.has(id)){seen.add(id);records.push({id,promotion:promotion[1],title,date,categories:promotion[2],venue:label.slice((dateMatch.index||0)+dateMatch[0].length).trim()||'공식 장소 확인 중',referenceUrl,source:'GONG Kakutogi event calendar',fetchedAt:new Date().toISOString()})}
   }
   return records;
 }
