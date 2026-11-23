@@ -26,6 +26,8 @@ compactCalendarStyle.textContent=`
   .calendar-panel .day.compact-day .event.major{font-size:12px}
   .calendar-panel .day.compact-day .event.is-expanded{padding:5px 4px 5px 6px;line-height:1.15}
   .calendar-panel .day.compact-day .event.is-expanded span{display:block;margin-top:2px;color:#9ca4a2;font:400 9px/1.18 'IBM Plex Sans KR',sans-serif}
+  .calendar-panel .day.today{box-shadow:inset 0 0 0 2px #f1c84b;position:relative;z-index:1}
+  .calendar-panel .day.today .date{color:#f1c84b}
 `;
 document.head.append(compactCalendarStyle);
 const originalRenderDays=renderDays;
