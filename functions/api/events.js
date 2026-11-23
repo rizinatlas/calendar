@@ -3,6 +3,7 @@ import {PROMOTION_SOURCES} from './sources.js';
 const UFC_EVENTS_URL='https://www.ufc.com/events#events-list-upcoming';
 const UFC_ORIGIN='https://www.ufc.com';
 const ROAD_TICKETS_URL='https://roadfc.com/main/ticket/ticket.php';
+const ROAD_HOME_URL='https://m.roadfc.co.kr/main/index.php';
 const BLACK_EVENTS_URL='https://www.blackcombat-official.com/event.php';
 const DEEP_POSTS_URL='https://www.deep2001.com/wp-json/wp/v2/posts?after=2026-01-01T00:00:00&before=2027-01-01T00:00:00&per_page=100&_embed=1';
 const ONE_EVENTS_URL='https://www.onefc.com/events/';
@@ -107,10 +108,28 @@ function roadFcRecords(html){
   return records;
 }
 
+function roadFcAnnouncementRecords(html){
+  const records=[];
+  const text=plainText(html);
+  const pattern=/(?:GOOBNE|굽네)\s+ROAD\s*FC\s*(\d+)\s*\/?\s*(20\d{2})년\s*(\d{1,2})월\s*(\d{1,2})일/gi;
+  for(const match of text.matchAll(pattern)){
+    const [,number,year,month,day]=match;
+    const listedVenue=text.slice(match.index,match.index+180).match(/서울\s*장충체육관|SEOUL\s+JANGCHUNG\s+ARENA/i)?.[0];
+    const venue=/SEOUL/i.test(listedVenue||'')?'장충체육관':listedVenue?.replaceAll(/\s+/g,' ').trim()||'공식 장소 확인 중';
+    records.push({id:`road-fc-${number}`,promotion:'ROAD FC',title:`굽네 ROAD FC ${number}`,number,date:`${year}-${month.padStart(2,'0')}-${day.padStart(2,'0')}`,city:'Seoul, Korea',venue,officialUrl:ROAD_HOME_URL,instagramUrl:'https://www.instagram.com/roadfc/',source:'ROAD FC official homepage announcement',fetchedAt:new Date().toISOString()});
+  }
+  return [...new Map(records.map(record=>[record.id,record])).values()];
+}
+
 async function fetchRoadSchedule(){
-  const response=await fetch(ROAD_TICKETS_URL,{headers:requestHeaders,cf:{cacheTtl:900,cacheEverything:true}});
-  if(!response.ok)throw new Error(`ROAD FC tickets returned ${response.status}`);
-  return roadFcRecords(await response.text());
+  const [tickets,homepage]=await Promise.all([
+    fetch(ROAD_TICKETS_URL,{headers:requestHeaders,cf:{cacheTtl:900,cacheEverything:true}}),
+    fetch(ROAD_HOME_URL,{headers:requestHeaders,cf:{cacheTtl:900,cacheEverything:true}})
+  ]);
+  if(!tickets.ok&&!homepage.ok)throw new Error('ROAD FC official sources unavailable');
+  const ticketRecords=tickets.ok?roadFcRecords(await tickets.text()):[];
+  const announcementRecords=homepage.ok?roadFcAnnouncementRecords(await homepage.text()):[];
+  return [...new Map([...ticketRecords,...announcementRecords].map(record=>[record.id,record])).values()];
 }
 function blackCombatRecords(html){const records=[];for(const match of html.matchAll(/([\s\S]{0,1800}?)eventSeq=(\d+)/g)){const context=match[1],date=[...context.matchAll(/(2026)년\s*(\d{1,2})월\s*(\d{1,2})일/g)].pop();if(!date)continue;const [,year,month,day]=date;records.push({id:`black-combat-${match[2]}`,promotion:'BLACK COMBAT',date:`${year}-${month.padStart(2,'0')}-${day.padStart(2,'0')}`,officialUrl:`https://www.blackcombat-official.com/eventDetail.php?eventSeq=${match[2]}`,source:'BLACK COMBAT official event archive',fetchedAt:new Date().toISOString()})}return [...new Map(records.map(item=>[item.id,item])).values()]}
 function blackCombatDetails(html,event){const title=plainText(field(html,/<title[^>]*>\s*([^<|]+)/i)||'').replaceAll('BLACK COMBAT','').trim();const seq=event.id.split('-').pop();const poster=field(html,/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)/i)||`https://www.blackcombat-official.com/theme/blackcombat/img/event/${seq}/2.jpg`;return {...event,title:title||`BLACK COMBAT ${seq}`,city:'Seoul, Korea',venue:plainText(html.match(/(?:장소|장소 안내)\s*[:：]?\s*([^<\n]{2,80})/i)?.[1]||'공식 장소 확인 중'),posterUrl:poster.replace(/^\//,'https://www.blackcombat-official.com/'),posterType:'event-poster',posterSourceUrl:event.officialUrl}}
