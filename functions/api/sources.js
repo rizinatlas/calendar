@@ -8,6 +8,9 @@ export const PROMOTION_SOURCES=[
 
 PROMOTION_SOURCES.push({id:'heat',name:'HEAT',categories:['japan'],homepage:'https://heatofficial.com/',scheduleUrl:'https://heatofficial.com/',instagramUrl:null,posterArchiveUrl:null,mode:'automated'});
 
+const afcSource=PROMOTION_SOURCES.find(source=>source.name==='AFC');
+if(afcSource){afcSource.homepage='https://www.instagram.com/angels_fighting_official/';afcSource.instagramUrl='https://www.instagram.com/angels_fighting_official/';afcSource.mode='official-social-manual'}
+
 const k1Source=PROMOTION_SOURCES.find(source=>source.name==='K-1');
 if(k1Source&&!k1Source.categories.includes('major'))k1Source.categories.push('major');
 
